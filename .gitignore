@@ -1,0 +1,6 @@
+.agents/
+.claude/
+logo-original.png
+favicon-crop.png
+skills-lock.json
+node_modules/
