@@ -2733,11 +2733,6 @@
     (function() {
       'use strict';
 
-      // ━━━ CONFIGURAR: Pega tu webhook de Google Sheets aqui ━━━
-      var SHEETS_WEBHOOK = 'PEGAR_URL_AQUI';
-      // ━━━ CONFIGURAR: Pega el email destino aqui ━━━
-      var EMAIL_DESTINO = 'contacto@libetservice.cl';
-
       // ════════════════════════════════════════
       // Hero: Word-by-word reveal with blur-in
       // ════════════════════════════════════════
@@ -2942,76 +2937,40 @@
       }, 3000);
 
       // ════════════════════════════════════════
-      // Form Handling
+      // Conversion Tracking — GoHighLevel iframe form
+      // El formulario es un iframe cross-origin (api.hapee.ai), por lo que
+      // no podemos escuchar su 'submit' directamente. GHL avisa del envio al
+      // window padre via postMessage. Escuchamos esa señal y disparamos la
+      // conversion de Google Ads una sola vez por carga de pagina.
       // ════════════════════════════════════════
-      var leadForm = document.getElementById('leadForm');
-      var submitBtn = document.getElementById('submitBtn');
-      var formSuccess = document.getElementById('formSuccess');
+      (function () {
+        var conversionFired = false;
 
-      if (leadForm) {
-        leadForm.addEventListener('submit', function(e) {
-          e.preventDefault();
-
-          // Basic validation
-          var nombre = document.getElementById('nombre').value.trim();
-          var telefono = document.getElementById('telefono').value.trim();
-          var email = document.getElementById('email').value.trim();
-
-          if (!nombre || !telefono || !email) {
-            alert('Por favor complete los campos obligatorios: Nombre, Telefono y Email.');
-            return;
-          }
-
-          // Email validation
-          var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(email)) {
-            alert('Por favor ingrese un correo electronico valido.');
-            return;
-          }
-
-          // Show loading
-          submitBtn.classList.add('loading');
-          submitBtn.disabled = true;
-
-          // Collect form data
-          var formData = {
-            nombre: nombre,
-            empresa: document.getElementById('empresa').value.trim(),
-            telefono: telefono,
-            email: email,
-            servicio: document.getElementById('servicio').value,
-            mensaje: document.getElementById('mensaje').value.trim(),
-            timestamp: new Date().toISOString(),
-            source: 'Landing Page Libet Service'
-          };
-
-          // Send to webhook (if configured)
-          if (SHEETS_WEBHOOK && SHEETS_WEBHOOK !== 'PEGAR_URL_AQUI') {
-            fetch(SHEETS_WEBHOOK, {
-              method: 'POST',
-              mode: 'no-cors',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(formData)
-            }).catch(function(err) {
-              console.warn('Webhook error:', err);
-            });
-          }
-
-          // GOOGLE ADS CONVERSION: Disparar en submit
+        function fireConversion() {
+          if (conversionFired) return;
+          conversionFired = true;
           if (typeof gtag === 'function') {
             gtag('event', 'conversion', {
               'send_to': 'AW-18052244525/yszGCJGr25wcEK3I_Z9D'
             });
           }
+        }
 
-          // Simulate success after short delay
-          setTimeout(function() {
-            submitBtn.classList.remove('loading');
-            leadForm.style.display = 'none';
-            formSuccess.classList.add('active');
-          }, 1500);
+        window.addEventListener('message', function (e) {
+          // Solo aceptamos mensajes del dominio del form de GHL
+          if (typeof e.origin !== 'string' || e.origin.indexOf('hapee.ai') === -1) return;
+
+          var data = e.data;
+          // GHL emite los mensajes como array: data[0] = accion
+          var action = Array.isArray(data) ? data[0] : (data && data.type);
+
+          // 'set-sticky-contacts'  -> lead capturado (envio exitoso, siempre)
+          // 'modify-parent-url'    -> redireccion post-submit (si esta configurada)
+          if (action === 'set-sticky-contacts' || action === 'modify-parent-url') {
+            fireConversion();
+          }
         });
-      }
+      })();
 
       // ════════════════════════════════════════
       // Smooth scroll for anchor links
