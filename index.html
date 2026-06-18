@@ -2957,8 +2957,13 @@
         }
 
         window.addEventListener('message', function (e) {
-          // Solo aceptamos mensajes del dominio del form de GHL
-          if (typeof e.origin !== 'string' || e.origin.indexOf('hapee.ai') === -1) return;
+          // Solo aceptamos mensajes del origin EXACTO del form de GHL
+          // (comparacion exacta, no substring, para evitar dominios tipo hapee.ai.evil.com)
+          if (e.origin !== 'https://api.hapee.ai') return;
+
+          // Y solo si vienen del iframe del formulario, no de otra ventana/popup
+          var formFrame = document.getElementById('inline-s1iMr9qYyUgaUqILMJ5y');
+          if (!formFrame || e.source !== formFrame.contentWindow) return;
 
           var data = e.data;
           // GHL emite los mensajes como array: data[0] = accion
